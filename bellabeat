@@ -1,0 +1,90 @@
+#load packages
+install.packages("tidyverse")
+install.packages("skimr")
+install.packages("janitor")
+install.packages("dplyr")
+install.packages("ggplot2")
+
+library(tidyverse)
+library(skimr) 
+library(janitor)
+library(dplyr) 
+library(lubridate)
+library(ggplot2)
+
+#Importing CSV files
+daily_activity <- read.csv("dailyActivity_merged.csv")
+daily_calories <- read.csv("dailyCalories_merged.csv") 
+sleep_day <- read.csv("sleepDay_merged.csv") 
+
+# exploring the data 
+colnames(daily_calories) 
+colnames(daily_activity) 
+colnames(sleep_day)
+head(daily_activity) 
+head(daily_calories) 
+head(sleep_day)
+
+# cleaning the data and analyzing the data
+daily_activity1 <- daily_activity %>% 
+  mutate(daily_activity, date = as.Date(daily_activity$ActivityDate, format= "%m/%d/%y")) 
+head(daily_activity1) 
+head(daily_calories)
+daily_calories1<- daily_calories %>%
+  mutate(daily_calories, date = as.Date(daily_calories$ActivityDay, format= "%m/%d/%y"))
+head(daily_calories1)
+sleep_day1 <- sleep_day %>%
+  mutate(sleep_day, date = as.Date(strptime(sleep_day$SleepDay, "%m/%d/%Y %H:%M:%S", tz= "")))
+head(sleep_day1)
+daily_activity %>%  
+  select(TotalSteps,
+         TotalDistance,
+         SedentaryMinutes) %>%
+  summary()
+sleep_day %>%  
+  select(TotalSleepRecords,
+         TotalMinutesAsleep,
+         TotalTimeInBed) %>%
+  summary()
+daily_calories %>%
+  select(Calories)%>%
+  summary()
+  
+#the maximum calories burned was 4900 and average was 2304.Only 3 records found while sleeping. the average distance is 7638, average TotalDistance is 5.6 and average sedentary minutes is 991
+#check for duplicated data
+nrow(daily_calories1[duplicated(daily_calories1),])
+nrow(daily_activity1[duplicated(daily_activity1),])
+nrow(sleep_day1[duplicated(sleep_day1),])
+nrow(sleep_day1)
+nrow(daily_activity1)
+nrow(daily_calories1)
+sleep_day1 <- unique(sleep_day1)
+nrow(sleep_day1)
+
+#find how many participant recorded the data
+n_distinct(daily_activity1$Id)
+n_distinct(sleep_day1$Id)
+n_distinct(daily_calories1$Id)
+# merge data. a_c = activity1 and calories1. c_s = calories_1 and sleep_day1
+daily_a_c <- merge(daily_activity1, daily_calories1, by = c("date", "Id"))
+daily_c_s <- merge(daily_calories1, sleep_day1, by = c("Id"))
+head(daily_c_s)
+
+# vizualization 
+ggplot(data=daily_a_c) +
+  geom_point(mapping=aes(x=TotalSteps, y=Calories.y)) +
+  geom_smooth(mapping=aes(x=TotalSteps, y=Calories.y),method = loess, formula = y ~ x, color = "red")+
+  labs(title= "Daily calories burned Vs Total steps")
+
+record_type <- c("Daily activity records","Daily sleep records","Daily calories records")
+record_number <-c(n_distinct(daily_activity1$Id),n_distinct(sleep_day1$Id), n_distinct(daily_calories1$Id))
+record_count <- data.frame(record_type,record_number)
+ggplot(data= record_count, aes(x=record_type,y=record_number)) +
+  geom_bar(stat= "identity", fill="blue") +
+  labs(title="Daily records by type")
+
+ggplot(daily_c_s,aes(x=TotalMinutesAsleep)) +
+  geom_histogram(aes(y=..density..),binwidth=10,color="darkblue",fill="lightblue") +
+  geom_density(alpha=.2,fill="orange") +
+  geom_vline(aes(xintercept=mean(TotalMinutesAsleep)), color="red", linetype="dashed", size=1) 
+  
